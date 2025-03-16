@@ -4,9 +4,10 @@
 # Copyright(c) 2023 John Sanpe <sanpeqf@gmail.com>
 #
 
+lk2ndimg="build/aboot.img"
 kerndtb="build/kernel-dtb"
 bootimg="build/boot.img"
-lk2ndimg="build/aboot.img"
+modules="build/modules"
 
 livecd="build/livecd"
 rootfs="$livecd/mnt"
@@ -49,19 +50,20 @@ function build_linux()
     done
 
     cd linux
+    mkdir -p $modules
     make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- msm8916_defconfig
     make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -j$[$(nproc) * 2]
-    make INSTALL_MOD_PATH=../$rootfs modules_install
+    make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH=../$modules modules_install
     cd -
 }
 
 function prepare_livecd()
 {
-    url="http://os.archlinuxarm.org/os/ArchLinuxARM-aarch64-latest.tar.gz"
+    liveurl="https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/os/ArchLinuxARM-aarch64-latest.tar.gz"
     livepack="build/ArchLinuxARM-aarch64-latest.tar.gz"
 
     if [ ! -e $livepack ]; then
-        curl -L -o $livepack $url
+        curl -L -o $livepack $liveurl
     fi
 
     mkdir -p $livecd
@@ -85,12 +87,22 @@ function install_aur_package()
     $chlivedo "cd /home/alarm/$name && pacstrap -cGMU /mnt ./*.tar.zst"
 }
 
+function install_url_package()
+{
+    local url=$1
+    local name=$(uuidgen)
+    $chlivedo "cd /root && curl -L -o $name $url"
+    $chlivedo "cd /root && pacstrap -cGMU /mnt ./$name"
+}
+
 function config_rootfs()
 {
     chlivedo="arch-chroot $livecd qemu-aarch64-static /bin/bash -c"
     chrootdo="arch-chroot $rootfs qemu-aarch64-static /bin/bash -c"
+    mirror='https://mirrors.tuna.tsinghua.edu.cn/archlinuxarm/$arch/$repo'
 
     cp -p /usr/bin/qemu-aarch64-static $livecd/bin/qemu-aarch64-static
+    echo "Server = $mirror" > $livecd/etc/pacman.d/mirrorlist
 
     # Initialize environment
     $chlivedo "pacman-key --init"
@@ -108,12 +120,22 @@ function config_rootfs()
         install_aur_package $package
     done
 
-    $chlivedo "echo 'alarm' > /mnt/etc/hostname"
-    $chlivedo "echo 'LANG=C'> /mnt/etc/locale.conf"
-    $chlivedo "echo -n > /mnt/etc/machine-id"
+    for package in $(cat config/*.url.conf); do
+        install_url_package $package
+    done
 
     cp -p /usr/bin/qemu-aarch64-static $rootfs/bin/qemu-aarch64-static
     cp -p config/resize2fs.service $rootfs/usr/lib/systemd/system
+
+    cp -rp "$modules/lib/modules" "$rootfs/lib"
+    for version in $(ls "$rootfs/lib/modules"); do
+        $chrootdo "depmod -av $version"
+    done
+
+    echo "Server = $mirror" > $rootfs/etc/pacman.d/mirrorlist
+    $chrootdo "echo 'alarm' > /etc/hostname"
+    $chrootdo "echo 'LANG=C'> /etc/locale.conf"
+    $chrootdo "echo -n > /etc/machine-id"
 
     # Configure rootfs
     $chrootdo "useradd -d /home/alarm -m -U alarm"
@@ -146,16 +168,55 @@ function generate_checksum()
     sha256sum $rootimg.zst > $rootimg.zst.sha256sum
 }
 
+#=========================
+# build targets
+#=========================
+
 set -ev
+cd $(dirname $(readlink -f $0))
 mkdir -p build
-prepare_livecd
-prepare_rootfs
-config_rootfs
 
-build_lk2nd
-build_linux
-make_boot
-make_image
+function target_lk2nd()
+{
+    build_lk2nd
+}
 
-pack_rootfs
-generate_checksum
+function target_kernel()
+{
+    build_linux
+    make_boot
+    make_image
+}
+
+function target_rootfs()
+{
+    prepare_livecd
+    prepare_rootfs
+    config_rootfs
+    pack_rootfs
+    generate_checksum
+}
+
+function target_all()
+{
+    target_lk2nd
+    target_kernel
+    target_rootfs
+}
+
+num=$#
+option=""
+while [ $# -ne 0 ]; do
+	case $1 in
+        all) option='target_all' ;;
+        lk2nd) option='target_lk2nd' ;;
+        kernel) option='target_kernel' ;;
+        rootfs) option='target_rootfs' ;;
+	esac
+	if [ $((num)) -gt 0 ]; then
+		shift
+	fi
+done
+
+eval "${option:-'target_all'}"
+echo "Done."
