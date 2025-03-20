@@ -58,4 +58,12 @@ sdbd -df /var/log/sdbd.log
 # start usb gadget
 sleep 1
 UDC=$(ls /sys/class/udc/ | awk '{print $1}')
-echo $UDC > ${USB_CONFIGFS_DIR}/UDC
+
+nohup bash -c "
+	while true; do
+		if [ \"#\$(cat ${USB_CONFIGFS_DIR}/UDC)\" != \"#$UDC\" ]; then
+			echo $UDC > ${USB_CONFIGFS_DIR}/UDC
+		fi
+		sleep 0.5
+	done
+" &
