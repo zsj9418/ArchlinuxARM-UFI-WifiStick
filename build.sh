@@ -128,7 +128,10 @@ function config_rootfs()
     cp -p /usr/bin/qemu-aarch64-static $rootfs/bin/qemu-aarch64-static
     cp -p config/service/* $rootfs/usr/lib/systemd/system/
     cp -p config/rc.local $rootfs/etc/
+
+    cp -rp config/sudoers.d/ $rootfs/etc/
     cp -rp config/rc.local.d/ $rootfs/etc/
+    chmod 0750 $rootfs/etc/sudoers.d/
 
     cp -rp "$modules/lib/modules" "$rootfs/lib"
     for version in $(ls "$rootfs/lib/modules"); do
@@ -136,6 +139,9 @@ function config_rootfs()
     done
 
     echo "Server = $mirror" > $rootfs/etc/pacman.d/mirrorlist
+    echo -e '\n[archlinuxcn]' >> /etc/pacman.conf
+    echo 'Server = https://repo.archlinuxcn.org/$arch' >> /etc/pacman.conf
+
     $chrootdo "echo 'alarm' > /etc/hostname"
     $chrootdo "echo 'LANG=C' > /etc/locale.conf"
     $chrootdo "echo -n > /etc/machine-id"
@@ -147,6 +153,7 @@ function config_rootfs()
     $chrootdo "systemctl enable $(cat config/services.conf)"
     $chrootdo "pacman-key --init"
     $chrootdo "pacman-key --populate archlinuxarm"
+    $chrootdo "pacman --noconfirm -Syy"
 
     rm -rf $livecd/bin/qemu-aarch64-static
     rm -rf $rootfs/bin/qemu-aarch64-static
