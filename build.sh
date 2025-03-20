@@ -128,6 +128,7 @@ function config_rootfs()
     cp -p /usr/bin/qemu-aarch64-static $rootfs/bin/qemu-aarch64-static
     cp -p config/service/* $rootfs/usr/lib/systemd/system/
     cp -p config/rc.local $rootfs/etc/
+    cp -rp config/rc.local.d/ $rootfs/etc/
 
     cp -rp "$modules/lib/modules" "$rootfs/lib"
     for version in $(ls "$rootfs/lib/modules"); do
@@ -136,7 +137,7 @@ function config_rootfs()
 
     echo "Server = $mirror" > $rootfs/etc/pacman.d/mirrorlist
     $chrootdo "echo 'alarm' > /etc/hostname"
-    $chrootdo "echo 'LANG=C'> /etc/locale.conf"
+    $chrootdo "echo 'LANG=C' > /etc/locale.conf"
     $chrootdo "echo -n > /etc/machine-id"
 
     # Configure rootfs
