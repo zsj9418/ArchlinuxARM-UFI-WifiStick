@@ -125,7 +125,8 @@ function config_rootfs()
     done
 
     cp -p /usr/bin/qemu-aarch64-static $rootfs/bin/qemu-aarch64-static
-    cp -p config/resize2fs.service $rootfs/usr/lib/systemd/system
+    cp -p config/service/* $rootfs/usr/lib/systemd/system/
+    cp -p config/rc.local $rootfs/etc/
 
     cp -rp "$modules/lib/modules" "$rootfs/lib"
     for version in $(ls "$rootfs/lib/modules"); do

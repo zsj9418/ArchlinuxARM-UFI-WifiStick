@@ -1,0 +1,13 @@
+[Unit]
+Description=/etc/rc.local Compatibility
+ConditionFileIsExecutable=/etc/rc.local
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+RemainAfterExit=yes
+GuessMainPID=no
+TimeoutSec=0
+
+[Install]
+WantedBy=multi-user.target

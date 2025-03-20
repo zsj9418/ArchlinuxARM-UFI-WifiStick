@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+export PATH="/bin:/sbin:/usr/local/bin:/usr/local/sbin"
+
+# Source configuration files from /etc/rc.local.d
+for file in /etc/rc.local.d/*.sh; do
+	if [ -r "$file" ]; then
+		bash $file
+	fi
+done
+unset file
