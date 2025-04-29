@@ -1,17 +1,24 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 export PATH="/bin:/sbin:/usr/local/bin:/usr/local/sbin"
 
-# Source configuration files from /etc/rc.local.d
 for file in /etc/rc.local.d/*.sh; do
-	if [ -r "$file" ]; then
-		bash $file
-	fi
+    if [[ -r "$file" ]]; then
+        bash "$file"
+    fi
 done
-unset file
+
 sleep 3
-grep 0 /sys/kernel/debug/usb/ci_hdrc.0/device | grep speed
-if [ $? -eq 0 ]
-then
-echo host > /sys/kernel/debug/usb/ci_hdrc.0/role
+
+if grep '0' /sys/kernel/debug/usb/ci_hdrc.0/device 2>/dev/null | grep -q 'speed'; then
+    if [[ -w /sys/kernel/debug/usb/ci_hdrc.0/role ]]; then
+        echo host > /sys/kernel/debug/usb/ci_hdrc.0/role
+    else
+        echo "Warning: No permission to write to USB role file" >&2
+    fi
 fi
+
+unset file
+
 exit 0
+
+
