@@ -8,3 +8,10 @@ for file in /etc/rc.local.d/*.sh; do
 	fi
 done
 unset file
+sleep 3
+grep 0 /sys/kernel/debug/usb/ci_hdrc.0/device | grep speed
+if [ $? -eq 0 ]
+then
+echo host > /sys/kernel/debug/usb/ci_hdrc.0/role
+fi
+exit 0
