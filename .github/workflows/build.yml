@@ -23,10 +23,12 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install make mkbootimg build-essential \
+          sudo apt install -y make mkbootimg build-essential \
             libncurses5-dev bison flex libssl-dev device-tree-compiler \
             gcc-arm-none-eabi gcc-aarch64-linux-gnu bc libfdt-dev \
-            libarchive-tools arch-install-scripts qemu-user-static
+            libarchive-tools arch-install-scripts qemu-user-static \
+            python3 python3-pip
+            pip3 install gki  
 
       - name: Initialization submodule
         run: git submodule update --init --depth=1
@@ -46,6 +48,7 @@ jobs:
             ${{github.workspace}}/build/boot.img.sha256sum
             ${{github.workspace}}/build/rootfs.img.zst.sha256sum
             ${{github.workspace}}/linux/arch/arm64/boot/Image.gz
+
       - name: Create release
         uses: softprops/action-gh-release@v1
         if: github.ref == 'refs/heads/master'
